@@ -12,12 +12,13 @@ Author: Guru Prasad (g.gaurav541@gmail.com)
 
 
 class Bing:
-    def __init__(self, query, limit, output_dir, adult, timeout,  filter='', verbose=True):
+    def __init__(self, query, limit, output_dir, adult, timeout,  filter='', size="", verbose=True):
         self.download_count = 0
         self.query = query
         self.output_dir = output_dir
         self.adult = adult
         self.filter = filter
+        self.size = size
         self.verbose = verbose
         self.seen = set()
 
@@ -52,6 +53,18 @@ class Bing:
             else:
                 return ""
 
+    def get_size(self, shorthand):
+        if shorthand == "small":
+            return "+filterui:imagesize-small"
+        elif shorthand == "medium":
+            return "+filterui:imagesize-medium"
+        elif shorthand == "large":
+            return "+filterui:imagesize-large"
+        elif shorthand == "extra_large":
+            return "+filterui:imagesize-wallpaper"
+        else:
+            return ""
+
 
     def save_image(self, link, file_path):
         request = urllib.request.Request(link, None, self.headers)
@@ -69,6 +82,7 @@ class Bing:
         try:
             path = urllib.parse.urlsplit(link).path
             filename = posixpath.basename(path).split('?')[0]
+            
             file_type = filename.split(".")[-1]
             if file_type.lower() not in ["jpe", "jpeg", "jfif", "exif", "tiff", "gif", "bmp", "png", "webp", "jpg"]:
                 file_type = "jpg"
@@ -77,8 +91,7 @@ class Bing:
                 # Download the image
                 print("[%] Downloading Image #{} from {}".format(self.download_count, link))
                 
-            self.save_image(link, self.output_dir.joinpath("Image_{}.{}".format(
-                str(self.download_count), file_type)))
+            self.save_image(link, self.output_dir.joinpath(filename))
             if self.verbose:
                 print("[%] File Downloaded !\n")
 
@@ -94,7 +107,8 @@ class Bing:
             # Parse the page source and download pics
             request_url = 'https://www.bing.com/images/async?q=' + urllib.parse.quote_plus(self.query) \
                           + '&first=' + str(self.page_counter) + '&count=' + str(self.limit) \
-                          + '&adlt=' + self.adult + '&qft=' + ('' if self.filter is None else self.get_filter(self.filter))
+                          + '&adlt=' + self.adult + '&qft=' + ('' if self.filter is None else self.get_filter(self.filter))+ ('' if self.size is None else self.get_size(self.size))
+            print(request_url)
             request = urllib.request.Request(request_url, None, headers=self.headers)
             response = urllib.request.urlopen(request)
             html = response.read().decode('utf8')
@@ -102,6 +116,7 @@ class Bing:
                 print("[%] No more images are available")
                 break
             links = re.findall('murl&quot;:&quot;(.*?)&quot;', html)
+            
             if self.verbose:
                 print("[%] Indexed {} Images on Page {}.".format(len(links), self.page_counter + 1))
                 print("\n===============================================\n")
